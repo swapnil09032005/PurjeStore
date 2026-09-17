@@ -80,3 +80,6 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+
+# Private local milestone helper files
+Milestones Handeler/
