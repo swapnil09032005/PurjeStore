@@ -1,0 +1,70 @@
+﻿source_column,target_column,relationship_type,validation_status,source_total_or_tested,populated_or_validated,unmatched_count,evidence_or_rule
+orders.userId,user.user_id,DECLARED_FK,Validated,374,374,0,Order owner user relationship
+customers.user_id,user.user_id,DECLARED_FK,Validated,6,6,0,Observed order-owning users mapped to customer records
+orders.billingAddressId,address.id,DECLARED_FK,Validated,374,374,0,Billing address ownership aligned with order user
+orders.shippingAddressId,address.id,DECLARED_FK,Validated,374,374,0,Shipping address ownership aligned with order user
+order_items.order_id,orders.order_id,DECLARED_FK,Validated,374,374,0,Order item to order
+order_items.variantId,variants.id,DECLARED_FK,Validated,,,0,Order item variant relationship
+order_items.productId,product.product_id,DECLARED_FK,Validated,,,0,Order item product relationship
+variants.product_id,product.product_id,DECLARED_FK,Validated,,,0,Variant to product
+shipment_booking.order_id,orders.order_id,DECLARED_FK,Validated,,,0,Booking order reference; not exclusive for consolidated shipments
+shipment_items.shipment_id,shipment_booking.shipment_booking_id,DECLARED_FK,Validated,,,0,Shipment item to shipment
+shipment_items.order_item_id,order_items.order_item_id,DECLARED_FK,Validated,,,0,Shipment item to order item
+shipment_booking.vendor_id,user.user_id,SEMANTIC,Validated,345,345,0,Vendor represented through vendors.user_id
+orders.vendor_id,vendors.vendor_id,SEMANTIC,Validated,374,374,0,Direct vendor identity
+hub_inventory.vendor_id,user.user_id,SEMANTIC,Validated,78,78,0,Vendor represented through vendors.user_id
+daily_product_metrics.product_id,product.product_id,SEMANTIC,Validated,254,254,0,Product metric identity
+daily_product_metrics.vendor_id,vendors.vendor_id / vendors.user_id,SEMANTIC,Validated,254,254,0,Mixed direct-vendor and vendor-user semantics
+daily_vendor_metrics.vendor_user_id,vendors.user_id,SEMANTIC,Validated,102,102,0,Vendor-user metric identity
+shipment_booking.to_address_id,hub_master.hub_id,DECLARED_FK,Validated,211,211,0,Column name is address-like but FK target is hub
+payment_orders.payment_id,payments.payment_id,DECLARED_FK,Validated,348,348,0,Payment-order bridge
+payment_orders.order_id,orders.order_id,DECLARED_FK,Validated,348,348,0,Payment-order bridge
+payment_receipts.transactionId,payments.transaction_id,SEMANTIC,Validated,246,246,0,Business/payment transaction identifier
+return_request.order_id,orders.order_id,DECLARED_FK,Validated,63,63,0,Return to original order
+return_request.shipment_id,shipment_booking.shipment_booking_id,DECLARED_FK,Validated,63,63,0,Return shipment
+shipment_items.order_item_id,order_items.order_item_id,SEMANTIC,Validated,63,63,0,Return trace through shipment item
+exchange_request.old_order_id,orders.order_id,DECLARED_FK,Validated,27,27,0,Exchange old order
+exchange_request.return_id,return_request.return_request_id,DECLARED_FK,Validated,27,27,0,Exchange return identity
+exchange_request.replacement_inbound_shipment_id,shipment_booking.shipment_booking_id,SEMANTIC,Validated,25,25,0,Replacement inbound shipment
+exchange_request.current_attempt_id,exchange_attempt.exchange_attempt_id,SEMANTIC,Validated,8,8,0,Current exchange attempt
+hub_inventory_units.return_id,hub_returns.hub_return_id,SEMANTIC,Validated,44,44,0,Inventory unit to hub return
+rtv_batch.vendor_user_id,vendors.user_id,SEMANTIC,Validated,20,20,0,RTV vendor-user identity
+rtv_batch.hub_id,hub_master.hub_id,SEMANTIC,Validated,20,20,0,RTV hub identity
+rtv_batch_item.rtv_batch_id,rtv_batch.rtv_batch_id,SEMANTIC,Validated,,,0,RTV batch item to batch
+rtv_batch_item.hub_return_id,hub_returns.hub_return_id,SEMANTIC,Validated,21,21,0,RTV batch item to hub return
+rtv_batch_item.hub_inventory_unit_id,hub_inventory_units.hub_inventory_unit_id,SEMANTIC,Validated,21,21,0,RTV batch item to inventory unit
+event_logs.user_id,user.user_id,DECLARED_FK,Validated,2061,2061,0,Event user references
+event_logs.product_id,product.product_id,SEMANTIC,Validated,977,977,0,Event product references
+event_logs.order_id,orders.order_id,SEMANTIC,Validated,628,628,0,Event order references
+notification_logs.userId,user.user_id,SEMANTIC,Validated,7140,7140,0,Notification log user identity
+notification_logs.notification_id,notifications.id,DECLARED_FK,Validated,7124,7124,0,Notification log notification identity
+journal_entries.companyId,company_details.id,SEMANTIC,Validated,735,735,0,Accounting company identity
+journal_entries.voucherId,journal_entry_lines.journalEntryId,SEMANTIC,Validated,728,728,0,Voucher semantic relationship
+journal_entry_lines.partyId,vendors.vendor_id / customers.customer_id,SEMANTIC,Validated,729,729,0,Target depends on party_type; one customer identity uses user bridge
+ops_audit_log.order_id,orders.order_id,SEMANTIC,Validated,1661,1661,0,Audit order context
+ops_audit_log.shipment_id,shipment_booking.shipment_booking_id,SEMANTIC,Validated,1245,1245,0,Audit shipment context
+ops_audit_log.performed_by_user_id,user.user_id,SEMANTIC,Validated,1168,1168,0,Audit actor
+ops_audit_log.entity_id,target by entity_type,POLYMORPHIC,Validated,1691,1691,0,SHIPMENT/ORDER/VENDOR_BANK_ACCOUNT/QC_RULE mappings
+invoices.order_id,orders.order_id,SEMANTIC,Validated,320,320,0,Invoice order identity
+invoices.vendor_id,vendors.vendor_id,SEMANTIC,Validated,320,320,0,Invoice vendor identity
+invoices.receipt_id,payment_receipts.id,SEMANTIC,Validated,98,98,0,Invoice receipt identity
+invoices.original_invoice_id,invoices.id,SEMANTIC,Validated,45,45,0,Invoice self-lineage
+invoices.journal_entry_id,journal_entry_lines.journalEntryId,SEMANTIC,Validated,304,304,0,Invoice accounting linkage
+invoices.customer_id,user.user_id,SEMANTIC,Validated,135,135,0,Invoice customer field behaves as user identity
+delivery_challans.order_id,orders.order_id,SEMANTIC,Validated,18,18,0,Delivery challan order
+delivery_challans.reference_return_id,return_request.return_request_id,SEMANTIC,Validated,18,18,0,Delivery challan return
+delivery_challans.reference_invoice_id,invoices.id,SEMANTIC,Validated,18,18,0,Delivery challan invoice
+delivery_challans.from_party_id,user.user_id,SEMANTIC,Validated,9,9,0,Party identity
+delivery_challans.to_party_id,user.user_id,SEMANTIC,Validated,9,9,0,Party identity
+einvoice_records.order_id,orders.order_id,SEMANTIC,Validated,33,33,0,E-invoice order
+eway_bill_records.delivery_challan_id,delivery_challans.id,SEMANTIC,Validated,18,18,0,E-way bill delivery challan
+eway_bill_records.einvoice_record_id,einvoice_records.id,SEMANTIC,Validated,34,34,0,E-way bill e-invoice
+eway_bill_records.sinv_id,invoices.id,SEMANTIC,Validated,68,68,0,SINV field matched invoice IDs
+packaging.shipment_id,shipment_booking.shipment_booking_id,SEMANTIC,Validated,130,130,0,Packaging shipment
+variants_temp.original_variant_id,variants.id,SEMANTIC,Validated,,,0,Temporary variant lineage
+product_temp.*_unit_id,item_unit.id,SEMANTIC,Validated,,,0,All tested populated temporary product unit references matched
+accounts.companyId,company_details.id,SEMANTIC,Validated,81,81,0,Account company identity
+accounts.vendorId,vendors.vendor_id,SEMANTIC,Validated,6,6,0,Account vendor identity
+vendor_payments.vendorId,vendors.vendor_id,SEMANTIC,Validated,5,5,0,Vendor payment vendor identity
+vendor_payments.bankAccountId,vendor_bank_detail.id,SEMANTIC,Validated,5,5,0,Vendor payment bank account
+product_bulk_uploads.vendor_id,vendors.vendor_id,SEMANTIC,Validated,19,19,0,Bulk upload vendor
