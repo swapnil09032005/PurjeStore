@@ -85,3 +85,6 @@ Thumbs.db
 Milestones Handeler/
 C-T-R2_EVIDENCE_FOR_REVIEW/
 C-T_AUTHORITATIVE_EVIDENCE_FOR_REVIEW/
+
+# Generated physical cleaning repair outputs
+data/cleaned_repair_*/
