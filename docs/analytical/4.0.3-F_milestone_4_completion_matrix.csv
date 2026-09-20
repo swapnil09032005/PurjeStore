@@ -1,0 +1,10 @@
+component,required_work,completed,validation,artifact,status
+4.0.1,Establish analytical dataset design framework and contract,YES,Framework/contract documented; no real dataset constructed,docs/analytical/4.0.1_analytical_dataset_design_framework.md,COMPLETE
+4.0.2,Validate actual PurjeStore analytical architecture,YES,"52 candidates, 69 relationships, 68 concrete, 1 dynamic; no dataset constructed",docs/analytical/4.0.2_analytical_architecture_validation.md,COMPLETE
+4.0.3-A,Select evidence-backed candidate universe,YES,52 candidate rows; relationship evidence reconciled; no construction,docs/analytical/4.0.3-A_analytical_dataset_candidate_selection.md,COMPLETE
+4.0.3-B,Lock candidate source scope and analytical grain,YES,52 source scopes and 52 grain keys locked; all duplicate-free,docs/analytical/4.0.3-B_candidate_grain_source_scope_locking.md,COMPLETE
+4.0.3-C,Validate join paths and fan-out controls,YES,69 relationships; 78 expanded path rows; 0 source-to-target fan-out row-inflation paths,docs/analytical/4.0.3-C_join_path_fanout_validation.md,COMPLETE
+4.0.3-D,Evaluate analytical dataset construction,YES,52 candidates evaluated; 0 datasets constructed because no approved dataset contract exists,docs/analytical/4.0.3-D_analytical_dataset_construction.md,COMPLETE
+4.0.3-E,Validate constructed dataset outcome,YES,Zero-construction outcome validated; no accidental analytical output detected,docs/analytical/4.0.3-E_constructed_dataset_validation.md,COMPLETE
+4.0.3-F,Consolidate Milestone 4 documentation and closure evidence,YES,This consolidation matrix and closure document generated,docs/analytical/4.0.3-F_milestone_4_consolidation.md,COMPLETE
+4.0.3-G,Git checkpoint after complete Milestone 4,PENDING_AT_DOCUMENT_GENERATION,To be committed/pushed/verified after this document is generated,Git commit,PENDING_GIT_CHECKPOINT

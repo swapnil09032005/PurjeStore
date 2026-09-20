@@ -1,0 +1,8 @@
+milestone,validation_check,method,result,status
+4.0.3-E,construction_decision_register_available,Read 4.0.3-D construction decision register,52 candidate construction decisions loaded,PASS
+4.0.3-E,constructed_dataset_count,Count rows where analytical_dataset_constructed is true,0,PASS
+4.0.3-E,constructed_dataset_paths,Confirm constructed_dataset_path is NONE for all candidates,52/52 NONE,PASS
+4.0.3-E,raw_and_cleaned_source_protection,Use 4.0.3-D decision evidence; no construction write path was used,No raw or cleaned source modification required or performed by 4.0.3-D/E,PASS
+4.0.3-E,analytical_output_inventory__data_processed,Inspect expected derived analytical output location for non-placeholder files,exists=True; non_gitkeep_file_count=0; files=NONE,PASS
+4.0.3-E,analytical_output_inventory__data_features,Inspect expected derived analytical output location for non-placeholder files,exists=True; non_gitkeep_file_count=0; files=NONE,PASS
+4.0.3-E,analytical_output_inventory__outputs_analytics,Inspect expected derived analytical output location for non-placeholder files,exists=True; non_gitkeep_file_count=0; files=NONE,PASS
