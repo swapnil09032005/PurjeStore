@@ -1,5 +1,7 @@
+
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 from typing import Any
@@ -9,77 +11,80 @@ import plotly.express as px
 import streamlit as st
 
 
-# =============================================================================
-# PURJESTORE — DASHBOARD APPLICATION FOUNDATION
-# Major Milestone 8.3
+# ============================================================
+# PurjeStore — Controlled Dashboard Application
 #
-# Evidence boundary inherited from Milestones 8.0–8.2:
-#   - Streamlit is the primary application framework.
-#   - Plotly is used for interactive descriptive visuals.
-#   - data/processed/analytical is read-only application input.
-#   - No cross-dataset joins are performed.
-#   - No final business KPI is invented from numeric-column presence.
-#   - No ML / forecasting / recommendation / churn / fraud page is activated.
-#   - 5.5-C candidate_measure_register_55c values remain unrecoverable.
+# Evidence boundaries:
+#   Analytical datasets : 26
+#   Analytical rows     : 12,148
+#   Analytical columns  : 289
+#   Approved page/field : 21
+#   Approved pages      : 8
+#   Final KPIs          : 0
+#   Approved joins      : 0
+#   Selected ML         : 0
 #
-# This is an evidence-bounded descriptive analytics foundation.
-# =============================================================================
+# The dashboard reads the validated analytical layer only.
+# It never writes to analytical CSVs.
+# ============================================================
 
 
-# -----------------------------------------------------------------------------
-# 1. APPLICATION CONFIGURATION
-# -----------------------------------------------------------------------------
-
-st.set_page_config(
-    page_title="PurjeStore Analytics",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded",
+PROJECT_ROOT = Path(
+    r"C:\Users\ASUS\Desktop\PurjeStore"
 )
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-ANALYTICAL_ROOT = PROJECT_ROOT / "data" / "processed" / "analytical"
+ANALYTICAL_ROOT = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "analytical"
+)
+
+REFRESH_REPORT_PATH = (
+    PROJECT_ROOT
+    / "outputs"
+    / "refresh"
+    / "latest_refresh_report.json"
+)
+
 
 PAGE_AREAS = [
-    "Executive / Overview",
-    "Sales / Commercial Analytics",
-    "Order Analytics",
-    "Product / Catalog Analytics",
-    "Customer / Account Analytics",
-    "Fulfillment / Shipping Analytics",
-    "Returns / Exchange Analytics",
-    "Operations / Inventory Analytics",
+    "P01 Executive Overview",
+    "P02 Commercial / Sales",
+    "P03 Orders",
+    "P04 Products / Catalog",
+    "P05 Customers / Accounts",
+    "P06 Fulfillment / Shipping",
+    "P07 Returns / Exchange",
+    "P08 Operations / Inventory",
+    "Data & System Health",
+    "Technical Dataset Explorer",
 ]
 
-EXCLUDED_AREAS = [
-    "ML Predictions",
-    "Forecasting",
-    "Recommendations",
-    "Churn / Retention Prediction",
-    "Fraud Detection",
+
+KNOWN_LIMITATIONS = [
+    "Final KPI activation remains zero.",
+    "No approved cross-dataset joins are used.",
+    "ML and predictive outputs remain blocked.",
+    "The analytical layer is read-only from the dashboard.",
+    "Orders does not expose order_id in the approved analytical projection.",
+    "Customer-related raw PII is not exposed.",
+    "Deferred variants_temp fields remain blocked.",
+    "Numeric dtype alone does not establish business meaning.",
 ]
 
-KNOWN_LIMITATIONS = {
-    "5.5-C measure evidence": (
-        "candidate_measure_register_55c values were not recoverable as a "
-        "complete 193 × 14 structured register."
-    ),
-    "notification_logs": "Coverage gap preserved from prior milestones.",
-    "orders": "Coverage gap preserved from prior milestones.",
-    "variants_temp": "Semantic deferrals preserved from prior milestones.",
-    "grain exceptions": "3 known grain exceptions preserved.",
-    "identifier/code warnings": "3 known identifier/code warnings preserved.",
-    "ML problem selection": "0 ML problems selected in Milestone 6.",
-}
+
+APPROVED_MAPPING = [{'dataset': 'daily_category_metrics', 'field': 'order_count', 'page': 'P01 Executive Overview', 'proposed_meaning': 'Daily category-level order count', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'daily_category_metrics', 'field': 'units_sold', 'page': 'P01 Executive Overview', 'proposed_meaning': 'Daily category-level units sold', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'daily_platform_metrics', 'field': 'total_orders', 'page': 'P01 Executive Overview', 'proposed_meaning': 'Daily platform-level order count', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'daily_platform_metrics', 'field': 'total_product_views', 'page': 'P01 Executive Overview', 'proposed_meaning': 'Daily platform-level product-view count', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'daily_vendor_metrics', 'field': 'orders', 'page': 'P01 Executive Overview', 'proposed_meaning': 'Daily vendor-level order count', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'daily_vendor_metrics', 'field': 'units_sold', 'page': 'P01 Executive Overview', 'proposed_meaning': 'Daily vendor-level units sold', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'daily_vendor_metrics', 'field': 'cancelled_orders', 'page': 'P01 Executive Overview', 'proposed_meaning': 'Daily vendor-level cancelled-order count', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'payment_transactions', 'field': 'status', 'page': 'P02 Commercial / Sales', 'proposed_meaning': 'Payment transaction status', 'aggregation': 'COUNT / FREQUENCY ONLY', 'visualization': 'BAR / TABLE', 'filterable': True, 'reason': 'Explicit categorical/status semantics with observed values suitable for descriptive presentation.'}, {'dataset': 'payments', 'field': 'status', 'page': 'P02 Commercial / Sales', 'proposed_meaning': 'Payment status', 'aggregation': 'COUNT / FREQUENCY ONLY', 'visualization': 'BAR / TABLE', 'filterable': True, 'reason': 'Explicit categorical/status semantics with observed values suitable for descriptive presentation.'}, {'dataset': 'invoices', 'field': 'quantity', 'page': 'P02 Commercial / Sales', 'proposed_meaning': 'Invoice quantity', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'order_items', 'field': 'quantity', 'page': 'P03 Orders', 'proposed_meaning': 'Order-item quantity', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'product', 'field': 'status', 'page': 'P04 Products / Catalog', 'proposed_meaning': 'Product status', 'aggregation': 'COUNT / FREQUENCY ONLY', 'visualization': 'BAR / TABLE', 'filterable': True, 'reason': 'Explicit categorical/status semantics with observed values suitable for descriptive presentation.'}, {'dataset': 'wallet_transactions', 'field': 'type', 'page': 'P05 Customers / Accounts', 'proposed_meaning': 'Wallet transaction type', 'aggregation': 'COUNT / FREQUENCY ONLY', 'visualization': 'BAR / TABLE', 'filterable': True, 'reason': 'Explicit categorical/status semantics with observed values suitable for descriptive presentation.'}, {'dataset': 'wallet_transactions', 'field': 'method', 'page': 'P05 Customers / Accounts', 'proposed_meaning': 'Wallet transaction method', 'aggregation': 'COUNT / FREQUENCY ONLY', 'visualization': 'BAR / TABLE', 'filterable': True, 'reason': 'Explicit categorical/status semantics with observed values suitable for descriptive presentation.'}, {'dataset': 'wallet_transactions', 'field': 'status', 'page': 'P05 Customers / Accounts', 'proposed_meaning': 'Wallet transaction status', 'aggregation': 'COUNT / FREQUENCY ONLY', 'visualization': 'BAR / TABLE', 'filterable': True, 'reason': 'Explicit categorical/status semantics with observed values suitable for descriptive presentation.'}, {'dataset': 'shipment_items', 'field': 'quantity', 'page': 'P06 Fulfillment / Shipping', 'proposed_meaning': 'Shipment-item quantity', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'hub_inventory', 'field': 'quantity', 'page': 'P06 Fulfillment / Shipping', 'proposed_meaning': 'Hub inventory quantity', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'return_request', 'field': 'status', 'page': 'P07 Returns / Exchange', 'proposed_meaning': 'Return-request status', 'aggregation': 'COUNT / FREQUENCY ONLY', 'visualization': 'BAR / TABLE', 'filterable': True, 'reason': 'Explicit categorical/status semantics with observed values suitable for descriptive presentation.'}, {'dataset': 'hub_returns', 'field': 'quantity', 'page': 'P07 Returns / Exchange', 'proposed_meaning': 'Hub-return quantity', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'hub_inventory', 'field': 'quantity', 'page': 'P08 Operations / Inventory', 'proposed_meaning': 'Hub inventory quantity', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}, {'dataset': 'daily_vendor_metrics', 'field': 'product_views', 'page': 'P08 Operations / Inventory', 'proposed_meaning': 'Daily vendor-level product views', 'aggregation': 'COUNT / SUM ONLY WHERE GRAIN SUPPORTS IT', 'visualization': 'BAR / LINE / TABLE', 'filterable': True, 'reason': 'Explicit count/quantity semantics and source-native analytical grain support descriptive use. Not a certified business KPI.'}]
 
 
-# -----------------------------------------------------------------------------
-# 2. DATA DISCOVERY / LOADING
-# -----------------------------------------------------------------------------
+# ============================================================
+# Existing reusable data functions
+# ============================================================
 
 @st.cache_data(show_spinner=False)
 def discover_analytical_files() -> list[Path]:
     """Discover analytical CSVs without modifying the filesystem."""
+
     if not ANALYTICAL_ROOT.exists():
         return []
 
@@ -92,31 +97,72 @@ def discover_analytical_files() -> list[Path]:
 
 @st.cache_data(show_spinner=False)
 def load_dataset(path_string: str) -> pd.DataFrame:
-    """Read one analytical CSV into memory without modifying its source."""
+    """Read one analytical CSV into memory."""
+
     path = Path(path_string)
 
     if not path.exists():
-        raise FileNotFoundError(f"Analytical dataset not found: {path}")
+        raise FileNotFoundError(
+            f"Analytical dataset not found: {path}"
+        )
 
     if path.suffix.lower() != ".csv":
-        raise ValueError(f"Unsupported analytical source: {path.name}")
+        raise ValueError(
+            f"Unsupported analytical source: {path.name}"
+        )
 
-    return pd.read_csv(path, low_memory=False)
-
-
-# -----------------------------------------------------------------------------
-# 3. TYPE / DISPLAY HELPERS
-# -----------------------------------------------------------------------------
-
-def is_numeric_series(series: pd.Series) -> bool:
-    return pd.api.types.is_numeric_dtype(series)
+    return pd.read_csv(
+        path,
+        low_memory=False,
+    )
 
 
-def is_datetime_like_series(series: pd.Series) -> bool:
-    if pd.api.types.is_datetime64_any_dtype(series):
+@st.cache_data(show_spinner=False)
+def load_refresh_report() -> dict[str, Any] | None:
+    """Read the actual Phase 16-C refresh report."""
+
+    if not REFRESH_REPORT_PATH.exists():
+        return None
+
+    try:
+
+        with REFRESH_REPORT_PATH.open(
+            "r",
+            encoding="utf-8",
+        ) as handle:
+
+            report = json.load(handle)
+
+        if not isinstance(report, dict):
+            return None
+
+        return report
+
+    except Exception:
+        return None
+
+
+def is_numeric_series(
+    series: pd.Series,
+) -> bool:
+
+    return pd.api.types.is_numeric_dtype(
+        series
+    )
+
+
+def is_datetime_like_series(
+    series: pd.Series,
+) -> bool:
+
+    if pd.api.types.is_datetime64_any_dtype(
+        series
+    ):
         return True
 
-    name = str(series.name).lower()
+    name = str(
+        series.name
+    ).lower()
 
     temporal_tokens = (
         "date",
@@ -129,28 +175,43 @@ def is_datetime_like_series(series: pd.Series) -> bool:
         "at",
     )
 
-    return any(token in name for token in temporal_tokens)
+    return any(
+        token in name
+        for token in temporal_tokens
+    )
 
 
-def safe_numeric_columns(df: pd.DataFrame) -> list[str]:
+def safe_numeric_columns(
+    df: pd.DataFrame,
+) -> list[str]:
+
     return [
         column
         for column in df.columns
-        if is_numeric_series(df[column])
+        if is_numeric_series(
+            df[column]
+        )
     ]
 
 
-def safe_categorical_columns(df: pd.DataFrame) -> list[str]:
+def safe_categorical_columns(
+    df: pd.DataFrame,
+) -> list[str]:
+
     result = []
 
     for column in df.columns:
+
         series = df[column]
         dtype = series.dtype
 
         if (
             pd.api.types.is_object_dtype(dtype)
             or pd.api.types.is_string_dtype(dtype)
-            or isinstance(dtype, pd.CategoricalDtype)
+            or isinstance(
+                dtype,
+                pd.CategoricalDtype,
+            )
             or pd.api.types.is_bool_dtype(dtype)
         ):
             result.append(column)
@@ -158,24 +219,44 @@ def safe_categorical_columns(df: pd.DataFrame) -> list[str]:
     return result
 
 
-def safe_temporal_columns(df: pd.DataFrame) -> list[str]:
+def safe_temporal_columns(
+    df: pd.DataFrame,
+) -> list[str]:
+
     return [
         column
         for column in df.columns
-        if is_datetime_like_series(df[column])
+        if is_datetime_like_series(
+            df[column]
+        )
     ]
 
 
-def format_number(value: Any) -> str:
+def format_number(
+    value: Any,
+) -> str:
+
     if value is None:
         return "—"
 
     try:
-        if isinstance(value, float) and math.isnan(value):
+
+        if (
+            isinstance(value, float)
+            and math.isnan(value)
+        ):
             return "—"
 
-        if isinstance(value, (int, float)):
-            return f"{value:,.2f}".rstrip("0").rstrip(".")
+        if isinstance(
+            value,
+            (int, float),
+        ):
+
+            return (
+                f"{value:,.2f}"
+                .rstrip("0")
+                .rstrip(".")
+            )
 
     except Exception:
         pass
@@ -183,319 +264,192 @@ def format_number(value: Any) -> str:
     return str(value)
 
 
-# -----------------------------------------------------------------------------
-# 4. HEADER
-# -----------------------------------------------------------------------------
+# ============================================================
+# Controlled semantic access
+# ============================================================
 
-st.title("PurjeStore Intelligent E-Commerce Analytics")
+def approved_records_for_page(
+    page_name: str,
+) -> list[dict[str, Any]]:
 
-st.caption(
-    "Evidence-bounded interactive analytics foundation • "
-    "Major Milestone 8.3"
-)
-
-st.info(
-    "This dashboard currently provides dataset-specific descriptive exploration. "
-    "Final business KPIs and cross-dataset metrics are not approved because "
-    "the authoritative 5.5-C measure register values were not recoverable as "
-    "a complete structured register."
-)
+    return [
+        record
+        for record in APPROVED_MAPPING
+        if record["page"] == page_name
+    ]
 
 
-# -----------------------------------------------------------------------------
-# 5. NAVIGATION
-# -----------------------------------------------------------------------------
+def descriptive_summary(
+    series: pd.Series,
+) -> dict[str, Any]:
 
-st.sidebar.header("Navigation")
+    clean = series.dropna()
 
-selected_area = st.sidebar.radio(
-    "Dashboard area",
-    PAGE_AREAS,
-    index=0,
-)
-
-st.sidebar.divider()
-
-st.sidebar.subheader("Evidence Boundary")
-
-st.sidebar.caption("Approved final business KPIs: 0")
-st.sidebar.caption("Approved cross-dataset joins: 0")
-st.sidebar.caption("Selected ML problems: 0")
-st.sidebar.caption("Source analytical datasets: read-only")
-
-st.sidebar.divider()
-
-st.sidebar.subheader("Excluded from current scope")
-
-for excluded in EXCLUDED_AREAS:
-    st.sidebar.caption(f"• {excluded}")
+    return {
+        "rows": int(len(series)),
+        "non_null": int(clean.shape[0]),
+        "missing": int(
+            series.isna().sum()
+        ),
+        "unique": int(
+            clean.nunique()
+        ),
+    }
 
 
-# -----------------------------------------------------------------------------
-# 6. SOURCE DISCOVERY
-# -----------------------------------------------------------------------------
+def safe_display_label(
+    record: dict[str, Any],
+) -> str:
 
-analytical_files = discover_analytical_files()
+    meaning = str(
+        record.get(
+            "proposed_meaning",
+            "",
+        )
+    ).strip()
 
-if not analytical_files:
-    st.error(
-        "No analytical CSV datasets were found under "
-        "`data/processed/analytical`."
-    )
-    st.stop()
+    if meaning:
+        return meaning
 
-dataset_names = [path.stem for path in analytical_files]
-
-dataset_lookup = {
-    path.stem: path
-    for path in analytical_files
-}
-
-
-# -----------------------------------------------------------------------------
-# 7. DATASET SELECTION
-# -----------------------------------------------------------------------------
-
-st.header(selected_area)
-
-st.caption(
-    "Each analytical dataset is explored independently. "
-    "Selecting a dataset does not authorize a join with another dataset."
-)
-
-selected_dataset = st.selectbox(
-    "Select an analytical dataset",
-    dataset_names,
-    index=0,
-)
-
-selected_path = dataset_lookup[selected_dataset]
-
-
-# -----------------------------------------------------------------------------
-# 8. LOAD DATASET
-# -----------------------------------------------------------------------------
-
-try:
-    df = load_dataset(str(selected_path))
-except Exception as exc:
-    st.error(f"Unable to load `{selected_dataset}`: {exc}")
-    st.stop()
-
-
-# -----------------------------------------------------------------------------
-# 9. DATASET PROFILE
-# -----------------------------------------------------------------------------
-
-numeric_columns = safe_numeric_columns(df)
-categorical_columns = safe_categorical_columns(df)
-temporal_columns = safe_temporal_columns(df)
-
-duplicate_rows = int(df.duplicated().sum())
-missing_cells = int(df.isna().sum().sum())
-total_cells = int(df.shape[0] * df.shape[1])
-
-missing_pct = (
-    (missing_cells / total_cells) * 100
-    if total_cells
-    else 0.0
-)
-
-metric_col_1, metric_col_2, metric_col_3, metric_col_4 = st.columns(4)
-
-with metric_col_1:
-    st.metric("Rows", f"{len(df):,}")
-
-with metric_col_2:
-    st.metric("Columns", f"{len(df.columns):,}")
-
-with metric_col_3:
-    st.metric("Missing cells", f"{missing_cells:,}")
-
-with metric_col_4:
-    st.metric("Complete-row duplicates", f"{duplicate_rows:,}")
-
-st.caption(
-    f"Dataset-level missingness: {missing_pct:.2f}% • "
-    f"Numeric fields: {len(numeric_columns)} • "
-    f"Categorical/string fields: {len(categorical_columns)} • "
-    f"Temporal-signal fields: {len(temporal_columns)}"
-)
-
-
-# -----------------------------------------------------------------------------
-# 10. EVIDENCE STATUS
-# -----------------------------------------------------------------------------
-
-with st.expander("Evidence and scope status", expanded=False):
-
-    st.warning(
-        "Numeric fields shown below are observable dataset fields. "
-        "They are NOT automatically approved business KPIs."
+    return (
+        str(record["field"])
+        .replace("_", " ")
+        .title()
     )
 
-    for limitation, detail in KNOWN_LIMITATIONS.items():
-        st.markdown(f"**{limitation}:** {detail}")
 
-    st.markdown(
-        "**Join control:** No cross-dataset join is performed by this application."
+def render_approved_record(
+    record: dict[str, Any],
+    key_prefix: str,
+) -> None:
+
+    del key_prefix
+
+    dataset = record["dataset"]
+    field = record["field"]
+
+    dataset_path = (
+        ANALYTICAL_ROOT
+        / f"{dataset}.csv"
+    )
+
+    if not dataset_path.exists():
+
+        st.warning(
+            f"Analytical dataset '{dataset}' "
+            "is currently unavailable."
+        )
+
+        return
+
+    df = load_dataset(
+        str(dataset_path)
+    )
+
+    if field not in df.columns:
+
+        st.warning(
+            f"Approved field '{dataset}.{field}' "
+            "is currently unavailable."
+        )
+
+        return
+
+    series = df[field]
+
+    summary = descriptive_summary(
+        series
+    )
+
+    label = safe_display_label(
+        record
     )
 
     st.markdown(
-        "**ML control:** No prediction, forecasting, recommendation, churn, "
-        "retention, or fraud model output is displayed."
+        f"### {label}"
     )
 
-
-# -----------------------------------------------------------------------------
-# 11. COLUMN-LEVEL EXPLORATION
-# -----------------------------------------------------------------------------
-
-st.subheader("Dataset Exploration")
-
-if not len(df.columns):
-    st.warning("This analytical dataset contains no columns.")
-    st.stop()
-
-selected_columns = st.multiselect(
-    "Columns to inspect",
-    options=list(df.columns),
-    default=list(df.columns[: min(8, len(df.columns))]),
-)
-
-if selected_columns:
-
-    preview_rows = st.slider(
-        "Preview rows",
-        min_value=5,
-        max_value=min(100, max(5, len(df))),
-        value=min(20, max(5, len(df))),
-        step=5,
+    st.caption(
+        f"Source: {dataset}.{field}"
     )
 
-    st.dataframe(
-        df[selected_columns].head(preview_rows),
-        width="stretch",
-        hide_index=True,
-    )
+    col1, col2, col3 = st.columns(3)
 
-else:
-    st.caption("Select one or more columns to display a preview.")
+    with col1:
 
-
-# -----------------------------------------------------------------------------
-# 12. NUMERIC DESCRIPTIVE ANALYSIS
-# -----------------------------------------------------------------------------
-
-st.subheader("Descriptive Numeric Analysis")
-
-if not numeric_columns:
-
-    st.caption("No numeric columns are available in this dataset.")
-
-else:
-
-    selected_numeric = st.selectbox(
-        "Numeric field",
-        numeric_columns,
-    )
-
-    numeric_series = pd.to_numeric(
-        df[selected_numeric],
-        errors="coerce",
-    )
-
-    valid_numeric = numeric_series.dropna()
-
-    stat_col_1, stat_col_2, stat_col_3, stat_col_4 = st.columns(4)
-
-    with stat_col_1:
-        st.metric("Non-null values", f"{valid_numeric.size:,}")
-
-    with stat_col_2:
         st.metric(
-            "Missing values",
-            f"{numeric_series.isna().sum():,}",
+            "Observed rows",
+            format_number(
+                summary["rows"]
+            ),
         )
 
-    with stat_col_3:
+    with col2:
+
         st.metric(
-            "Minimum",
-            format_number(valid_numeric.min())
-            if not valid_numeric.empty
-            else "—",
+            "Non-null",
+            format_number(
+                summary["non_null"]
+            ),
         )
 
-    with stat_col_4:
+    with col3:
+
         st.metric(
-            "Maximum",
-            format_number(valid_numeric.max())
-            if not valid_numeric.empty
-            else "—",
+            "Distinct values",
+            format_number(
+                summary["unique"]
+            ),
         )
 
-    if not valid_numeric.empty:
+    if summary["non_null"] == 0:
 
-        summary = pd.DataFrame(
-            {
-                "Statistic": [
-                    "Count",
-                    "Mean",
-                    "Median",
-                    "Std. deviation",
-                    "Minimum",
-                    "25th percentile",
-                    "75th percentile",
-                    "Maximum",
-                ],
-                "Value": [
-                    valid_numeric.count(),
-                    valid_numeric.mean(),
-                    valid_numeric.median(),
-                    valid_numeric.std(),
-                    valid_numeric.min(),
-                    valid_numeric.quantile(0.25),
-                    valid_numeric.quantile(0.75),
-                    valid_numeric.max(),
-                ],
-            }
+        st.info(
+            "No populated values are currently "
+            "available for this approved descriptive field."
         )
 
-        st.dataframe(
-            summary,
-            width="stretch",
-            hide_index=True,
+        return
+
+    visualization = str(
+        record.get(
+            "visualization",
+            "",
         )
+    ).lower()
 
-        chart_type = st.selectbox(
-            "Numeric visualization",
-            [
-                "Histogram",
-                "Box plot",
-            ],
+    if (
+        pd.api.types.is_numeric_dtype(series)
+        and (
+            "bar" in visualization
+            or "distribution" in visualization
+            or "chart" in visualization
         )
+    ):
 
-        if chart_type == "Histogram":
-
-            fig = px.histogram(
-                df,
-                x=selected_numeric,
-                title=f"Distribution of {selected_numeric}",
-                marginal="box",
+        chart_df = (
+            series
+            .value_counts(
+                dropna=False
             )
-
-        else:
-
-            fig = px.box(
-                df,
-                y=selected_numeric,
-                points="outliers",
-                title=f"Distribution of {selected_numeric}",
+            .rename_axis(
+                "value"
             )
+            .reset_index(
+                name="observations"
+            )
+        )
 
-        fig.update_layout(
-            height=480,
-            margin=dict(l=20, r=20, t=60, b=20),
+        chart_df["value"] = (
+            chart_df["value"]
+            .astype(str)
+        )
+
+        fig = px.bar(
+            chart_df,
+            x="value",
+            y="observations",
+            title=label,
         )
 
         st.plotly_chart(
@@ -503,227 +457,865 @@ else:
             width="stretch",
         )
 
+    elif (
+        not pd.api.types.is_numeric_dtype(series)
+        and (
+            "bar" in visualization
+            or "distribution" in visualization
+            or "chart" in visualization
+        )
+    ):
 
-# -----------------------------------------------------------------------------
-# 13. CATEGORICAL DESCRIPTIVE ANALYSIS
-# -----------------------------------------------------------------------------
-
-st.subheader("Categorical / Dimension Exploration")
-
-if not categorical_columns:
-
-    st.caption(
-        "No categorical/string fields are available in this dataset."
-    )
-
-else:
-
-    selected_category = st.selectbox(
-        "Categorical field",
-        categorical_columns,
-    )
-
-    category_counts = (
-        df[selected_category]
-        .astype("string")
-        .fillna("<NULL>")
-        .value_counts(dropna=False)
-        .head(30)
-        .rename_axis(selected_category)
-        .reset_index(name="row_count")
-    )
-
-    st.dataframe(
-        category_counts,
-        width="stretch",
-        hide_index=True,
-    )
-
-    if not category_counts.empty:
-
-        category_chart = px.bar(
-            category_counts,
-            x="row_count",
-            y=selected_category,
-            orientation="h",
-            title=f"Top observed values — {selected_category}",
+        chart_df = (
+            series
+            .fillna("Missing")
+            .astype(str)
+            .value_counts()
+            .head(30)
+            .rename_axis(
+                "value"
+            )
+            .reset_index(
+                name="observations"
+            )
         )
 
-        category_chart.update_layout(
-            height=max(
-                420,
-                min(900, 250 + len(category_counts) * 20),
-            ),
-            margin=dict(l=20, r=20, t=60, b=20),
+        fig = px.bar(
+            chart_df,
+            x="value",
+            y="observations",
+            title=label,
+        )
+
+        fig.update_layout(
+            xaxis_title=label,
+            yaxis_title="Observed rows",
         )
 
         st.plotly_chart(
-            category_chart,
+            fig,
             width="stretch",
-        )
-
-
-# -----------------------------------------------------------------------------
-# 14. TEMPORAL-SIGNAL EXPLORATION
-# -----------------------------------------------------------------------------
-
-st.subheader("Temporal-Signal Exploration")
-
-if not temporal_columns:
-
-    st.caption(
-        "No temporal-signal fields were identified by the current "
-        "conservative field-name/type detection."
-    )
-
-else:
-
-    selected_temporal = st.selectbox(
-        "Temporal-signal field",
-        temporal_columns,
-    )
-
-    parsed_temporal = pd.to_datetime(
-        df[selected_temporal],
-        errors="coerce",
-    )
-
-    temporal_valid = parsed_temporal.dropna()
-
-    if temporal_valid.empty:
-
-        st.warning(
-            f"`{selected_temporal}` could not be parsed into usable "
-            "datetime values under the current conservative parser."
         )
 
     else:
 
-        temporal_frame = pd.DataFrame(
-            {"timestamp": temporal_valid}
+        table_df = (
+            series
+            .fillna("Missing")
+            .astype(str)
+            .value_counts()
+            .head(30)
+            .rename_axis(
+                "value"
+            )
+            .reset_index(
+                name="observations"
+            )
         )
 
-        temporal_frame["date"] = (
-            temporal_frame["timestamp"].dt.floor("D")
+        st.dataframe(
+            table_df,
+            width="stretch",
+            hide_index=True,
         )
 
-        daily_counts = (
-            temporal_frame
-            .groupby("date", dropna=False)
-            .size()
-            .reset_index(name="row_count")
+    limitation = str(
+        record.get(
+            "reason",
+            "",
+        )
+    ).strip()
+
+    if limitation:
+
+        st.caption(
+            f"Evidence boundary: {limitation}"
         )
 
-        temporal_fig = px.line(
-            daily_counts,
-            x="date",
-            y="row_count",
-            markers=True,
-            title=(
-                f"Observed row count over time — "
-                f"{selected_temporal}"
+
+# ============================================================
+# Shared page header
+# ============================================================
+
+def render_page_header(
+    title: str,
+    description: str,
+) -> None:
+
+    st.title(title)
+
+    st.caption(
+        description
+    )
+
+
+# ============================================================
+# P01 Executive Overview
+# ============================================================
+
+def render_executive_overview() -> None:
+
+    render_page_header(
+        "Executive Overview",
+        (
+            "Evidence-bounded descriptive overview of the "
+            "validated analytical layer. Final business KPIs "
+            "are not activated."
+        ),
+    )
+
+    st.info(
+        "This page presents approved descriptive observations. "
+        "It does not certify revenue, profit, ROI, forecasting, "
+        "churn, recommendations, or fraud outputs."
+    )
+
+    report = load_refresh_report()
+
+    if report:
+
+        status = str(
+            report.get(
+                "status",
+                "UNKNOWN",
+            )
+        )
+
+        expected = report.get(
+            "dataset_count_expected"
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            st.metric(
+                "Refresh status",
+                status,
+            )
+
+        with col2:
+
+            st.metric(
+                "Datasets in refresh",
+                format_number(
+                    expected
+                ),
+            )
+
+    else:
+
+        st.warning(
+            "The latest refresh report is unavailable. "
+            "The analytical layer itself remains read-only."
+        )
+
+    records = approved_records_for_page(
+        "P01 Executive Overview"
+    )
+
+    for index, record in enumerate(
+        records
+    ):
+
+        render_approved_record(
+            record,
+            f"p01_{index}",
+        )
+
+
+# ============================================================
+# P02 Commercial / Sales
+# ============================================================
+
+def render_commercial_sales() -> None:
+
+    render_page_header(
+        "Commercial / Sales",
+        (
+            "Descriptive commercial observations from "
+            "evidence-approved analytical fields."
+        ),
+    )
+
+    st.info(
+        "Order, unit, product-view, and related descriptive "
+        "fields are shown only where explicitly approved. "
+        "Monetary KPI activation remains zero."
+    )
+
+    records = approved_records_for_page(
+        "P02 Commercial / Sales"
+    )
+
+    if not records:
+
+        st.info(
+            "No approved descriptive fields are available "
+            "for this page."
+        )
+
+        return
+
+    for index, record in enumerate(
+        records
+    ):
+
+        render_approved_record(
+            record,
+            f"p02_{index}",
+        )
+
+
+# ============================================================
+# P03 Orders
+# ============================================================
+
+def render_orders() -> None:
+
+    render_page_header(
+        "Orders",
+        (
+            "Descriptive order information using only "
+            "the approved analytical projection."
+        ),
+    )
+
+    st.info(
+        "The analytical orders projection does not expose "
+        "order_id, so individual-order drill-down is not "
+        "provided."
+    )
+
+    records = approved_records_for_page(
+        "P03 Orders"
+    )
+
+    for index, record in enumerate(
+        records
+    ):
+
+        render_approved_record(
+            record,
+            f"p03_{index}",
+        )
+
+
+# ============================================================
+# P04 Products / Catalog
+# ============================================================
+
+def render_products_catalog() -> None:
+
+    render_page_header(
+        "Products / Catalog",
+        (
+            "Descriptive product and catalog observations "
+            "from approved analytical fields."
+        ),
+    )
+
+    st.info(
+        "Deferred variants_temp fields such as stock, deleted, "
+        "handling_time, and item_length remain unavailable."
+    )
+
+    records = approved_records_for_page(
+        "P04 Products / Catalog"
+    )
+
+    for index, record in enumerate(
+        records
+    ):
+
+        render_approved_record(
+            record,
+            f"p04_{index}",
+        )
+
+
+# ============================================================
+# P05 Customers / Accounts
+# ============================================================
+
+def render_customers_accounts() -> None:
+
+    render_page_header(
+        "Customers / Accounts",
+        (
+            "Account and customer-related descriptive information "
+            "within the evidence-supported analytical boundary."
+        ),
+    )
+
+    st.warning(
+        "The accounts dataset is not treated as a customer master. "
+        "Raw customer names, emails, addresses, and other PII are "
+        "not exposed by this dashboard."
+    )
+
+    records = approved_records_for_page(
+        "P05 Customers / Accounts"
+    )
+
+    for index, record in enumerate(
+        records
+    ):
+
+        render_approved_record(
+            record,
+            f"p05_{index}",
+        )
+
+
+# ============================================================
+# P06 Fulfillment / Shipping
+# ============================================================
+
+def render_fulfillment_shipping() -> None:
+
+    render_page_header(
+        "Fulfillment / Shipping",
+        (
+            "Descriptive fulfillment and shipping observations "
+            "from approved analytical fields."
+        ),
+    )
+
+    records = approved_records_for_page(
+        "P06 Fulfillment / Shipping"
+    )
+
+    for index, record in enumerate(
+        records
+    ):
+
+        render_approved_record(
+            record,
+            f"p06_{index}",
+        )
+
+
+# ============================================================
+# P07 Returns / Exchange
+# ============================================================
+
+def render_returns_exchange() -> None:
+
+    render_page_header(
+        "Returns / Exchange",
+        (
+            "Descriptive return and exchange observations "
+            "from approved analytical fields."
+        ),
+    )
+
+    records = approved_records_for_page(
+        "P07 Returns / Exchange"
+    )
+
+    for index, record in enumerate(
+        records
+    ):
+
+        render_approved_record(
+            record,
+            f"p07_{index}",
+        )
+
+
+# ============================================================
+# P08 Operations / Inventory
+# ============================================================
+
+def render_operations_inventory() -> None:
+
+    render_page_header(
+        "Operations / Inventory",
+        (
+            "Descriptive operational and inventory observations "
+            "from approved analytical fields."
+        ),
+    )
+
+    records = approved_records_for_page(
+        "P08 Operations / Inventory"
+    )
+
+    for index, record in enumerate(
+        records
+    ):
+
+        render_approved_record(
+            record,
+            f"p08_{index}",
+        )
+
+
+# ============================================================
+# Data & System Health
+# ============================================================
+
+def render_data_health() -> None:
+
+    render_page_header(
+        "Data & System Health",
+        (
+            "Technical health of the validated analytical layer "
+            "and the latest controlled refresh."
+        ),
+    )
+
+    report = load_refresh_report()
+
+    if report is None:
+
+        st.error(
+            "The latest refresh report is unavailable."
+        )
+
+        st.info(
+            "No refresh metadata is being invented. "
+            "The dashboard will not fabricate a refresh status."
+        )
+
+        return
+
+    status = report.get(
+        "status",
+        "UNKNOWN",
+    )
+
+    started = report.get(
+        "started_at_utc",
+        "—",
+    )
+
+    finished = report.get(
+        "finished_at_utc",
+        "—",
+    )
+
+    expected = report.get(
+        "dataset_count_expected",
+        "—",
+    )
+
+    failure = report.get(
+        "failure"
+    )
+
+    publication = report.get(
+        "publication",
+        {},
+    )
+
+    if isinstance(
+        publication,
+        dict,
+    ):
+
+        publication_status = publication.get(
+            "status",
+            "UNKNOWN",
+        )
+
+    else:
+
+        publication_status = "UNKNOWN"
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Refresh status",
+            str(status),
+        )
+
+    with col2:
+
+        st.metric(
+            "Expected datasets",
+            format_number(expected),
+        )
+
+    with col3:
+
+        st.metric(
+            "Publication",
+            str(publication_status),
+        )
+
+    st.markdown(
+        "### Refresh timestamps"
+    )
+
+    timestamp_df = pd.DataFrame(
+        [
+            {
+                "event": "Started (UTC)",
+                "timestamp": started,
+            },
+            {
+                "event": "Finished (UTC)",
+                "timestamp": finished,
+            },
+        ]
+    )
+
+    st.dataframe(
+        timestamp_df,
+        width="stretch",
+        hide_index=True,
+    )
+
+    if failure is not None:
+
+        st.error(
+            "The latest controlled refresh reports a failure. "
+            "The previous valid analytical state remains the "
+            "dashboard's source boundary."
+        )
+
+        st.json(
+            failure
+        )
+
+    datasets = report.get(
+        "datasets",
+        [],
+    )
+
+    if not isinstance(
+        datasets,
+        list,
+    ):
+
+        datasets = []
+
+    st.markdown(
+        "### Dataset validation"
+    )
+
+    if not datasets:
+
+        st.info(
+            "No dataset-level refresh records are available."
+        )
+
+    else:
+
+        health_records = []
+
+        for dataset_record in datasets:
+
+            health_records.append(
+                {
+                    "dataset": dataset_record.get(
+                        "dataset",
+                        "—",
+                    ),
+                    "status": dataset_record.get(
+                        "status",
+                        "—",
+                    ),
+                    "source_rows": dataset_record.get(
+                        "source_rows",
+                        "—",
+                    ),
+                    "output_rows": dataset_record.get(
+                        "output_rows",
+                        "—",
+                    ),
+                    "source_fields": dataset_record.get(
+                        "source_fields",
+                        "—",
+                    ),
+                    "output_fields": dataset_record.get(
+                        "output_fields",
+                        "—",
+                    ),
+                    "grain_nulls": dataset_record.get(
+                        "source_grain_nulls",
+                        "—",
+                    ),
+                    "grain_duplicate_values": dataset_record.get(
+                        "source_grain_duplicate_values",
+                        "—",
+                    ),
+                    "expected_duplicate_rows": dataset_record.get(
+                        "expected_duplicate_rows",
+                        "—",
+                    ),
+                    "actual_duplicate_rows": dataset_record.get(
+                        "actual_duplicate_rows",
+                        "—",
+                    ),
+                    "error": dataset_record.get(
+                        "error"
+                    ),
+                }
+            )
+
+        health_df = pd.DataFrame(
+            health_records
+        )
+
+        st.dataframe(
+            health_df,
+            width="stretch",
+            hide_index=True,
+        )
+
+    st.markdown(
+        "### Validation boundary"
+    )
+
+    st.caption(
+        "The current refresh report does not contain "
+        "refresh_id, rows_processed, rows_published, "
+        "schema_changes, or historical refresh count. "
+        "Those values are therefore not displayed."
+    )
+
+
+# ============================================================
+# Technical Dataset Explorer
+# ============================================================
+
+def render_technical_explorer() -> None:
+
+    render_page_header(
+        "Technical Dataset Explorer",
+        (
+            "Read-only technical exploration of the analytical "
+            "layer. Technical field characteristics do not "
+            "constitute business-semantic approval."
+        ),
+    )
+
+    analytical_files = (
+        discover_analytical_files()
+    )
+
+    if not analytical_files:
+
+        st.error(
+            "No analytical CSV files were discovered."
+        )
+
+        return
+
+    dataset_names = [
+        path.stem
+        for path in analytical_files
+    ]
+
+    selected_dataset = st.selectbox(
+        "Analytical dataset",
+        dataset_names,
+    )
+
+    selected_path = (
+        ANALYTICAL_ROOT
+        / f"{selected_dataset}.csv"
+    )
+
+    try:
+
+        df = load_dataset(
+            str(selected_path)
+        )
+
+    except Exception as exc:
+
+        st.error(
+            f"Unable to load dataset: {exc}"
+        )
+
+        return
+
+    st.markdown(
+        "### Dataset overview"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Rows",
+            format_number(
+                len(df)
             ),
         )
 
-        temporal_fig.update_layout(
-            height=480,
-            margin=dict(l=20, r=20, t=60, b=20),
+    with col2:
+
+        st.metric(
+            "Columns",
+            format_number(
+                len(df.columns)
+            ),
         )
 
-        st.plotly_chart(
-            temporal_fig,
-            width="stretch",
+    with col3:
+
+        st.metric(
+            "Missing cells",
+            format_number(
+                int(
+                    df.isna().sum().sum()
+                )
+            ),
         )
 
-        st.caption(
-            "This is an observed row-count visualization. "
-            "It is not a forecast or business trend claim."
-        )
-
-
-# -----------------------------------------------------------------------------
-# 15. DATA QUALITY SNAPSHOT
-# -----------------------------------------------------------------------------
-
-st.subheader("Dataset Quality Snapshot")
-
-quality_frame = pd.DataFrame(
-    {
-        "column": df.columns,
-        "dtype": [
-            str(df[column].dtype)
-            for column in df.columns
-        ],
-        "non_null_count": [
-            int(df[column].notna().sum())
-            for column in df.columns
-        ],
-        "missing_count": [
-            int(df[column].isna().sum())
-            for column in df.columns
-        ],
-        "missing_pct": [
-            round(float(df[column].isna().mean() * 100), 2)
-            for column in df.columns
-        ],
-        "unique_count": [
-            int(df[column].nunique(dropna=True))
-            for column in df.columns
-        ],
-    }
-)
-
-st.dataframe(
-    quality_frame,
-    width="stretch",
-    hide_index=True,
-)
-
-
-# -----------------------------------------------------------------------------
-# 16. ANALYTICAL BOUNDARY
-# -----------------------------------------------------------------------------
-
-st.divider()
-
-st.subheader("Current Analytical Boundary")
-
-boundary_col_1, boundary_col_2 = st.columns(2)
-
-with boundary_col_1:
-
-    st.markdown("### Currently available")
-
-    st.markdown(
-        """
-        - Dataset-specific descriptive exploration
-        - Numeric distributions
-        - Categorical value distributions
-        - Temporal-signal exploration
-        - Dataset quality inspection
-        - Interactive dataset/field selection
-        - Plotly visual exploration
-        """
+    st.dataframe(
+        df.head(100),
+        width="stretch",
+        hide_index=True,
     )
 
-with boundary_col_2:
-
-    st.markdown("### Not activated")
-
     st.markdown(
-        """
-        - Final business KPI certification
-        - Cross-dataset joins
-        - Revenue/profit/ROI claims without evidence
-        - Forecasting
-        - ML predictions
-        - Recommendations
-        - Churn/retention prediction
-        - Fraud detection
-        """
+        "### Technical field profile"
     )
 
-st.caption(
-    "PurjeStore • Evidence-bounded dashboard foundation • "
-    "Major Milestone 8.3"
+    quality_frame = pd.DataFrame(
+        [
+            {
+                "field": column,
+                "dtype": str(
+                    df[column].dtype
+                ),
+                "non_null": int(
+                    df[column].notna().sum()
+                ),
+                "missing": int(
+                    df[column].isna().sum()
+                ),
+                "missing_pct": round(
+                    df[column].isna().mean() * 100,
+                    2,
+                ),
+                "unique": int(
+                    df[column].nunique(
+                        dropna=True
+                    )
+                ),
+            }
+            for column in df.columns
+        ]
+    )
+
+    st.dataframe(
+        quality_frame,
+        width="stretch",
+        hide_index=True,
+    )
+
+    st.caption(
+        "This technical explorer intentionally does not "
+        "certify fields as business KPIs or semantic dimensions."
+    )
+
+
+# ============================================================
+# Application shell
+# ============================================================
+
+st.set_page_config(
+    page_title="PurjeStore Analytics",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
+
+
+st.sidebar.title(
+    "PurjeStore Analytics"
+)
+
+st.sidebar.caption(
+    "Evidence-driven analytical decision support"
+)
+
+selected_page = st.sidebar.radio(
+    "Navigation",
+    PAGE_AREAS,
+)
+
+st.sidebar.divider()
+
+st.sidebar.subheader(
+    "Evidence Boundary"
+)
+
+st.sidebar.caption(
+    "26 analytical datasets"
+)
+
+st.sidebar.caption(
+    "21 approved descriptive page/field records"
+)
+
+st.sidebar.caption(
+    "0 final KPIs"
+)
+
+st.sidebar.caption(
+    "0 approved joins"
+)
+
+st.sidebar.caption(
+    "ML blocked"
+)
+
+st.sidebar.caption(
+    "Analytical layer is read-only"
+)
+
+
+# ============================================================
+# Controlled page routing
+# ============================================================
+
+if selected_page == "P01 Executive Overview":
+
+    render_executive_overview()
+
+elif selected_page == "P02 Commercial / Sales":
+
+    render_commercial_sales()
+
+elif selected_page == "P03 Orders":
+
+    render_orders()
+
+elif selected_page == "P04 Products / Catalog":
+
+    render_products_catalog()
+
+elif selected_page == "P05 Customers / Accounts":
+
+    render_customers_accounts()
+
+elif selected_page == "P06 Fulfillment / Shipping":
+
+    render_fulfillment_shipping()
+
+elif selected_page == "P07 Returns / Exchange":
+
+    render_returns_exchange()
+
+elif selected_page == "P08 Operations / Inventory":
+
+    render_operations_inventory()
+
+elif selected_page == "Data & System Health":
+
+    render_data_health()
+
+elif selected_page == "Technical Dataset Explorer":
+
+    render_technical_explorer()
