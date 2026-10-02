@@ -9,10 +9,16 @@ from dashboard.data import discover_analytical_files, load_dataset
 from dashboard.utils import format_number
 
 
-@st.cache_data(show_spinner=False)
-@st.cache_data(show_spinner=False)
-@st.cache_data(show_spinner=False)
 def render_technical_explorer() -> None:
+    """
+    Render the read-only technical dataset explorer.
+
+    The page renderer itself is intentionally not cached because it
+    contains Streamlit widgets and presentation commands.
+
+    Dataset discovery and dataset loading remain cached through the
+    data access layer in dashboard.data.
+    """
 
     render_page_header(
         "Technical Dataset Explorer",
@@ -23,16 +29,12 @@ def render_technical_explorer() -> None:
         ),
     )
 
-    analytical_files = (
-        discover_analytical_files()
-    )
+    analytical_files = discover_analytical_files()
 
     if not analytical_files:
-
         st.error(
             "No analytical CSV files were discovered."
         )
-
         return
 
     dataset_names = [
@@ -51,17 +53,13 @@ def render_technical_explorer() -> None:
     )
 
     try:
-
         df = load_dataset(
             str(selected_path)
         )
-
     except Exception as exc:
-
         st.error(
             f"Unable to load dataset: {exc}"
         )
-
         return
 
     st.markdown(
@@ -71,7 +69,6 @@ def render_technical_explorer() -> None:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-
         st.metric(
             "Rows",
             format_number(
@@ -80,7 +77,6 @@ def render_technical_explorer() -> None:
         )
 
     with col2:
-
         st.metric(
             "Columns",
             format_number(
@@ -89,7 +85,6 @@ def render_technical_explorer() -> None:
         )
 
     with col3:
-
         st.metric(
             "Missing cells",
             format_number(

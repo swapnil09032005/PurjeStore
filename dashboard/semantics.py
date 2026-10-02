@@ -1,96 +1,62 @@
-"""
-PurjeStore Dashboard Semantic Access
-
-This module is a narrow adapter around the existing executable dashboard
-semantic mapping.
-
-Authoritative semantic boundaries remain in:
-    docs/analytical/DASHBOARD_DATA_MAPPING_AND_SEMANTIC_CONTRACT.md
-
-During the behavior-preserving dashboard refactor, the existing
-APPROVED_MAPPING in app.py remains the executable mapping source.
-
-Responsibilities:
-- Expose the existing APPROVED_MAPPING.
-- Filter approved records by dashboard page.
-- Produce the existing controlled display-label behavior.
-
-This module must NOT:
-- Redefine APPROVED_MAPPING.
-- Add or remove approved fields.
-- Approve new KPIs.
-- Create joins.
-- Create analytical datasets.
-- Add ML logic.
-- Infer business meaning from data types.
-- Change semantic approval decisions.
-"""
-
 from __future__ import annotations
 
 from typing import Any
 
 
-def _load_existing_mapping() -> list[dict[str, Any]]:
+_APPROVED_MAPPING: list[dict[str, Any]] | None = None
+
+
+def configure_approved_mapping(
+    mapping: list[dict[str, Any]],
+) -> None:
     """
-    Load the existing executable APPROVED_MAPPING from app.py.
+    Configure the authoritative dashboard semantic mapping.
 
-    The import is intentionally deferred until the function is called so
-    this adapter does not execute the Streamlit application during module
-    import.
+    The root app.py remains the sole owner of APPROVED_MAPPING.
+    This module stores only a reference to that existing mapping.
 
-    Returns
-    -------
-    list[dict[str, Any]]
-        Existing approved dashboard mapping records.
-
-    Raises
-    ------
-    RuntimeError
-        If the existing mapping cannot be imported or is not a list.
+    app.py is intentionally NOT imported here because it is the
+    executable Streamlit entry point.
     """
-    try:
-        from app import APPROVED_MAPPING
-    except Exception as exc:
+    if not isinstance(mapping, list):
         raise RuntimeError(
-            "Unable to load the existing APPROVED_MAPPING from app.py."
-        ) from exc
-
-    if not isinstance(APPROVED_MAPPING, list):
-        raise RuntimeError(
-            "app.APPROVED_MAPPING must remain a list of mapping records."
+            "APPROVED_MAPPING must remain a list of mapping records."
         )
 
-    return APPROVED_MAPPING
+    if not all(
+        isinstance(record, dict)
+        for record in mapping
+    ):
+        raise RuntimeError(
+            "APPROVED_MAPPING must contain dictionary mapping records."
+        )
+
+    global _APPROVED_MAPPING
+
+    _APPROVED_MAPPING = mapping
 
 
 def approved_mapping() -> list[dict[str, Any]]:
     """
-    Return the existing executable approved dashboard mapping.
+    Return the authoritative configured dashboard mapping.
 
-    No records are created, modified, filtered, or reordered here.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        Existing APPROVED_MAPPING records.
+    This is read-only access. The semantic layer does not own,
+    reconstruct, or duplicate the mapping.
     """
-    return _load_existing_mapping()
+    if _APPROVED_MAPPING is None:
+        raise RuntimeError(
+            "APPROVED_MAPPING has not been configured by the "
+            "root dashboard entry point."
+        )
+
+    return _APPROVED_MAPPING
 
 
-def approved_records_for_page(page_name: str) -> list[dict[str, Any]]:
+def approved_records_for_page(
+    page_name: str,
+) -> list[dict[str, Any]]:
     """
-    Return existing approved mapping records for one dashboard page.
-
-    Parameters
-    ----------
-    page_name:
-        Exact dashboard page name.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        Approved records whose ``page`` equals ``page_name``.
+    Return approved semantic records for the requested dashboard page.
     """
     return [
         record
@@ -99,31 +65,35 @@ def approved_records_for_page(page_name: str) -> list[dict[str, Any]]:
     ]
 
 
-def safe_display_label(record: dict[str, Any]) -> str:
+def safe_display_label(
+    record: dict[str, Any],
+) -> str:
     """
-    Preserve the existing controlled dashboard display-label behavior.
+    Return the approved semantic meaning when available.
 
-    ``proposed_meaning`` remains the preferred label. If it is absent or
-    empty, the analytical field name is converted into a readable title.
-
-    Parameters
-    ----------
-    record:
-        Existing approved mapping record.
-
-    Returns
-    -------
-    str
-        Controlled display label.
+    If no proposed meaning exists, derive a safe display label
+    from the field name without changing the underlying contract.
     """
-    proposed_meaning = record.get("proposed_meaning")
+    proposed_meaning = record.get(
+        "proposed_meaning"
+    )
 
     if proposed_meaning:
         return str(proposed_meaning)
 
-    field_name = str(record.get("field", ""))
+    field_name = str(
+        record.get(
+            "field",
+            "",
+        )
+    )
 
     if not field_name:
         return ""
 
-    return field_name.replace("_", " ").strip().title()
+    return (
+        field_name
+        .replace("_", " ")
+        .strip()
+        .title()
+    )
