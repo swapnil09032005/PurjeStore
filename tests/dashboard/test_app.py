@@ -5,7 +5,16 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-import app
+from dashboard.config import ANALYTICAL_ROOT
+from dashboard.data import discover_analytical_files, load_dataset
+from dashboard.utils import (
+    format_number,
+    is_datetime_like_series,
+    is_numeric_series,
+    safe_categorical_columns,
+    safe_numeric_columns,
+    safe_temporal_columns,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -56,14 +65,14 @@ EXPECTED_DATASETS = {
 
 def test_dashboard_points_to_expected_analytical_directory():
     """The dashboard must read from the established analytical layer."""
-    assert app.ANALYTICAL_ROOT == ANALYTICAL_ROOT
-    assert app.ANALYTICAL_ROOT.exists()
-    assert app.ANALYTICAL_ROOT.is_dir()
+    assert ANALYTICAL_ROOT == ANALYTICAL_ROOT
+    assert ANALYTICAL_ROOT.exists()
+    assert ANALYTICAL_ROOT.is_dir()
 
 
 def test_discover_analytical_files_returns_current_dataset_set():
     """Discovery should expose exactly the current analytical CSV layer."""
-    discovered = app.discover_analytical_files()
+    discovered = discover_analytical_files()
 
     assert len(discovered) == EXPECTED_DATASET_COUNT
     assert all(path.is_file() for path in discovered)
@@ -76,7 +85,7 @@ def test_discover_analytical_files_returns_current_dataset_set():
 
 def test_discover_analytical_files_is_sorted():
     """Discovery should remain deterministic."""
-    discovered = app.discover_analytical_files()
+    discovered = discover_analytical_files()
 
     assert discovered == sorted(discovered)
 
@@ -85,7 +94,7 @@ def test_load_dataset_reads_real_analytical_dataset():
     """A real current analytical CSV must load successfully."""
     path = ANALYTICAL_ROOT / "accounts.csv"
 
-    df = app.load_dataset(str(path))
+    df = load_dataset(str(path))
 
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 81
@@ -97,7 +106,7 @@ def test_load_dataset_missing_file_raises_file_not_found():
     missing_path = ANALYTICAL_ROOT / "__definitely_missing_dataset__.csv"
 
     with pytest.raises(FileNotFoundError, match="Analytical dataset not found"):
-        app.load_dataset(str(missing_path))
+        load_dataset(str(missing_path))
 
 
 def test_load_dataset_rejects_non_csv_source(tmp_path):
@@ -109,7 +118,7 @@ def test_load_dataset_rejects_non_csv_source(tmp_path):
         ValueError,
         match="Unsupported analytical source",
     ):
-        app.load_dataset(str(unsupported))
+        load_dataset(str(unsupported))
 
 
 def test_load_dataset_preserves_csv_content_without_joining():
@@ -121,7 +130,7 @@ def test_load_dataset_preserves_csv_content_without_joining():
     """
     path = ANALYTICAL_ROOT / "product.csv"
 
-    df = app.load_dataset(str(path))
+    df = load_dataset(str(path))
 
     assert len(df) == 87
     assert len(df.columns) == 18
@@ -134,13 +143,13 @@ def test_load_dataset_preserves_csv_content_without_joining():
 def test_is_numeric_series_identifies_numeric_values():
     numeric = pd.Series([1, 2, 3], name="amount")
 
-    assert app.is_numeric_series(numeric) is True
+    assert is_numeric_series(numeric) is True
 
 
 def test_is_numeric_series_rejects_string_values():
     text = pd.Series(["1", "2", "3"], name="amount")
 
-    assert app.is_numeric_series(text) is False
+    assert is_numeric_series(text) is False
 
 
 def test_is_datetime_like_series_identifies_datetime_dtype():
@@ -151,7 +160,7 @@ def test_is_datetime_like_series_identifies_datetime_dtype():
         name="value",
     )
 
-    assert app.is_datetime_like_series(dates) is True
+    assert is_datetime_like_series(dates) is True
 
 
 @pytest.mark.parametrize(
@@ -174,7 +183,7 @@ def test_is_datetime_like_series_recognizes_temporal_name_signals(
         name=column_name,
     )
 
-    assert app.is_datetime_like_series(values) is True
+    assert is_datetime_like_series(values) is True
 
 
 def test_is_datetime_like_series_rejects_unrelated_string_column():
@@ -183,7 +192,7 @@ def test_is_datetime_like_series_rejects_unrelated_string_column():
         name="product_name",
     )
 
-    assert app.is_datetime_like_series(values) is False
+    assert is_datetime_like_series(values) is False
 
 
 def test_safe_numeric_columns_returns_pandas_numeric_fields():
@@ -203,7 +212,7 @@ def test_safe_numeric_columns_returns_pandas_numeric_fields():
         }
     )
 
-    assert app.safe_numeric_columns(df) == [
+    assert safe_numeric_columns(df) == [
         "integer_field",
         "float_field",
         "boolean_field",
@@ -218,7 +227,7 @@ def test_safe_numeric_columns_rejects_object_strings():
         }
     )
 
-    result = app.safe_numeric_columns(df)
+    result = safe_numeric_columns(df)
 
     assert result == ["numeric_field"]
 
@@ -240,7 +249,7 @@ def test_safe_categorical_columns_returns_supported_dimension_types():
         }
     )
 
-    result = app.safe_categorical_columns(df)
+    result = safe_categorical_columns(df)
 
     assert result == [
         "text_field",
@@ -260,7 +269,7 @@ def test_safe_temporal_columns_returns_temporal_signal_fields():
         }
     )
 
-    assert app.safe_temporal_columns(df) == [
+    assert safe_temporal_columns(df) == [
         "createdAt",
         "event_timestamp",
     ]
@@ -282,11 +291,11 @@ def test_safe_temporal_columns_returns_temporal_signal_fields():
     ],
 )
 def test_format_number_handles_supported_values(value, expected):
-    assert app.format_number(value) == expected
+    assert format_number(value) == expected
 
 
 def test_format_number_handles_nan():
-    assert app.format_number(float("nan")) == "—"
+    assert format_number(float("nan")) == "—"
 
 
 def test_format_number_does_not_fail_on_unusual_object():
@@ -296,7 +305,7 @@ def test_format_number_does_not_fail_on_unusual_object():
 
     value = ExampleObject()
 
-    assert app.format_number(value) == "example-object"
+    assert format_number(value) == "example-object"
 
 
 # ---------------------------------------------------------------------------
@@ -309,11 +318,11 @@ def test_real_accounts_dataset_supports_dashboard_classification():
     classification helpers used by the dashboard.
     """
     path = ANALYTICAL_ROOT / "accounts.csv"
-    df = app.load_dataset(str(path))
+    df = load_dataset(str(path))
 
-    numeric = app.safe_numeric_columns(df)
-    categorical = app.safe_categorical_columns(df)
-    temporal = app.safe_temporal_columns(df)
+    numeric = safe_numeric_columns(df)
+    categorical = safe_categorical_columns(df)
+    temporal = safe_temporal_columns(df)
 
     assert isinstance(numeric, list)
     assert isinstance(categorical, list)
@@ -331,13 +340,13 @@ def test_real_analytical_layer_total_baseline_matches_dashboard_input():
     The dashboard's discovered analytical layer must retain the established
     Phase 16/8 baseline: 26 datasets, 12,148 rows, 289 columns.
     """
-    discovered = app.discover_analytical_files()
+    discovered = discover_analytical_files()
 
     total_rows = 0
     total_columns = 0
 
     for path in discovered:
-        df = app.load_dataset(str(path))
+        df = load_dataset(str(path))
         total_rows += len(df)
         total_columns += len(df.columns)
 
@@ -357,7 +366,7 @@ def test_dashboard_helpers_do_not_modify_analytical_source_files():
     Record source metadata before and after discovery/loading. The helper
     layer must not alter the analytical CSV files.
     """
-    discovered = app.discover_analytical_files()
+    discovered = discover_analytical_files()
 
     before = {
         path: (
@@ -368,7 +377,7 @@ def test_dashboard_helpers_do_not_modify_analytical_source_files():
     }
 
     for path in discovered:
-        app.load_dataset(str(path))
+        load_dataset(str(path))
 
     after = {
         path: (
