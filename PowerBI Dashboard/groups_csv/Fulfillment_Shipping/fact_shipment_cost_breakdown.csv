@@ -1,0 +1,11 @@
+﻿shipment_cost_breakdown_id,shipment_id,charged_at,notes,cost_type,cost_bearer,payment_status,amount_legacy,amount
+1,118,2026-08-10 08:35:17,,rtv_shipping,VENDOR,,0.0,0
+2,119,2026-08-10 08:35:17,,rtv_shipping,VENDOR,,0.0,0
+3,214,2026-09-03 05:44:50,,rtv_shipping,VENDOR,,0.0,0
+4,215,2026-09-03 05:44:51,,rtv_shipping,VENDOR,,0.0,0
+5,304,2026-09-09 11:22:42,,rtv_shipping,VENDOR,,,0
+6,305,2026-09-09 11:22:42,,rtv_shipping,VENDOR,,,0
+7,328,2026-09-10 09:55:12,,rtv_shipping,VENDOR,,,0
+8,329,2026-09-10 09:55:12,,rtv_shipping,VENDOR,,,0
+9,330,2026-09-10 10:18:10,,rtv_shipping,VENDOR,,,0
+10,331,2026-09-10 10:18:10,,rtv_shipping,VENDOR,,,0
